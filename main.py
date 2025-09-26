@@ -15,10 +15,17 @@ text_processor/
 ├── controller/
 │   ├── __init__.py
 │   └── main_controller.py
+├── languages/
+│   ├── __init__.py
+│   ├── language_factory.py
+│   ├── base_language.py
+│   ├── chinese_simplified.py
+│   ├── chinese_traditional.py
+│   ├── english.py
+│   └── japanese.py
 └── utils/
     ├── __init__.py
     ├── file_manager.py
-    ├── ui_language_manager.py  # 重命名，专门处理UI语言
     └── config.py
 """
 
