@@ -1,34 +1,40 @@
-# main.py
+"""
+text_processor/
+├── main.py
+├── model/
+│   ├── __init__.py
+│   ├── document_model.py
+│   ├── text_processor.py
+│   └── language_detector.py
+├── view/
+│   ├── __init__.py
+│   ├── main_window.py
+│   ├── analysis_window.py
+│   ├── help_window.py
+│   └── support_window.py
+├── controller/
+│   ├── __init__.py
+│   └── main_controller.py
+└── utils/
+    ├── __init__.py
+    ├── file_manager.py
+    ├── ui_language_manager.py  # 重命名，专门处理UI语言
+    └── config.py
+"""
+
 import tkinter as tk
-from model import ApplicationModel
-from view import GUIView
-from controller import Controller
+from controller.main_controller import MainController
 
 
 def main():
-    # 创建主窗口
     root = tk.Tk()
-    root.title("文本处理与分析工具")
-    root.geometry("800x600")
 
-    # 初始化模型
-    model = ApplicationModel()
+    # 可以从配置中读取相似度阈值
+    similarity_threshold = 0.8  # 可配置参数
 
-    # 初始化视图
-    view = GUIView(root)
-
-    # 初始化控制器
-    controller = Controller(model, view)
-
-    # 将视图注册为模型的观察者
-    model.attach(view)
-
-    # 初始更新视图
-    view.update(model)
-
-    # 显示主窗口
+    app = MainController(root, similarity_threshold)
     root.mainloop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
