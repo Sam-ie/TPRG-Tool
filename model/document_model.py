@@ -28,21 +28,24 @@ class DocumentModel:
         self.processor_manager = TextProcessorManager(similarity_threshold)
 
     def add_observer(self, observer):
-        self._observers.append(observer)
+        """添加观察者"""
+        if observer not in self._observers:
+            self._observers.append(observer)
 
-    def notify_observers(self):
+    def remove_observer(self, observer):
+        """移除观察者"""
+        if observer in self._observers:
+            self._observers.remove(observer)
+
+    def notify_observers(self, event_type: str = "content_updated"):
+        """通知所有观察者"""
         for observer in self._observers:
-            observer.update()
+            if hasattr(observer, 'on_model_updated'):
+                observer.on_model_updated(self, event_type)
 
-    def load_file(self, file_path: str) -> Tuple[bool, str]:
-        """加载文件，返回(成功与否, 错误信息)"""
+    def load_file_with_content(self, file_path: str, content: str) -> Tuple[bool, str]:
+        """使用已有内容加载文件"""
         self.file_path = file_path
-
-        # 读取文件内容
-        content, error = FileManager.read_file(file_path)
-        if error:
-            return False, error
-
         self.original_content = content
         self.modified_content = content
 
@@ -50,8 +53,9 @@ class DocumentModel:
         self.detected_language = LanguageDetector.detect_language(content)
         self.processor_manager.set_language(self.detected_language)
 
-        self.notify_observers()
-        return True, "file_load_success"  # 返回消息键名
+        # 通知观察者内容已更新
+        self.notify_observers("file_loaded")
+        return True, "file_load_success"
 
     def save_file(self, file_path: str, file_type: str) -> Tuple[bool, str]:
         """保存文件，返回(成功与否, 错误信息)"""
@@ -62,7 +66,7 @@ class DocumentModel:
         if error:
             return False, error
 
-        return True, "file_save_success"  # 返回消息键名
+        return True, "file_save_success"
 
     def process_text(self, operation: str) -> Tuple[bool, str]:
         """处理文本，返回(成功与否, 错误信息)"""
@@ -75,7 +79,9 @@ class DocumentModel:
             )
             self.modified_content = result
             # TODO: 将modifications转换为TextModification对象
-            self.notify_observers()
+
+            # 通知观察者内容已修改
+            self.notify_observers("content_modified")
             return True, "process_completed"
         except Exception as e:
             return False, "process_failed"
@@ -91,7 +97,9 @@ class DocumentModel:
             )
             self.modified_content = result
             # TODO: 将modifications转换为TextModification对象
-            self.notify_observers()
+
+            # 通知观察者内容已修改
+            self.notify_observers("content_modified")
             return True, "smart_process_completed"
         except Exception as e:
             return False, "smart_process_failed"

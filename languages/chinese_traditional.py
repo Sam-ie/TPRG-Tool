@@ -40,15 +40,6 @@ class ChineseTraditional(BaseLanguage):
             "support_window_title": "支持作者",
 
             # 错误和信息消息
-            "file_not_exist": "文件不存在",
-            "unsupported_format": "不支持的文件格式",
-            "decode_error": "無法解碼文件編碼",
-            "read_docx_error": "讀取docx文件失敗",
-            "read_doc_error": "讀取doc文件失敗",
-            "read_file_error": "讀取文件時發生錯誤",
-            "save_file_error": "保存文件時發生錯誤",
-            "unsupported_export_format": "不支持的導出格式",
-            "pdf_export_not_implemented": "PDF導出功能暫未實現",
             "no_content_to_export": "沒有內容可導出",
             "file_load_success": "文件加載成功",
             "file_save_success": "文件保存成功",
@@ -83,5 +74,35 @@ class ChineseTraditional(BaseLanguage):
             "support_author_title": "支持作者",
             "support_methods": "支持方式",
             "close": "關閉",
+
+            # 进度窗口文本
+            "reading_file": "正在讀取文件...",
+            "processing": "正在處理",
+            "completed": "完成",
+            "file_read_complete": "文件讀取完成",
+
+            # 主窗口标题
+            "main_window_title": "文本處理工具",
+
+            # 文件管理器相关文本
+            "file_not_exist": "文件不存在",
+            "unsupported_format": "不支持的文件格式",
+            "read_file_error": "讀取文件時發生錯誤",
+            "decode_error": "無法解碼文件編碼",
+            "reading_file_progress": "讀取文件中",
+            "parsing_docx": "解析Word文檔...",
+            "converting_doc": "正在轉換DOC格式...",
+            "conversion_complete": "完成轉換",
+            "read_docx_error": "讀取docx文件失敗",
+            "read_doc_error": "讀取doc文件失敗",
+            "save_file_error": "保存文件時發生錯誤",
+            "unsupported_export_format": "不支持的導出格式",
+
+            # 文件过滤器文本
+            "supported_files": "支持的文件",
+            "word_documents": "Word文檔",
+            "word_97_2003_documents": "Word 97-2003文檔",
+            "text_files": "文本文件",
+            "all_files": "所有文件",
         }
         return texts.get(key, key)

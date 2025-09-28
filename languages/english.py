@@ -40,15 +40,6 @@ class English(BaseLanguage):
             "support_window_title": "Support Author",
 
             # 错误和信息消息
-            "file_not_exist": "File does not exist",
-            "unsupported_format": "Unsupported file format",
-            "decode_error": "Unable to decode file encoding",
-            "read_docx_error": "Failed to read docx file",
-            "read_doc_error": "Failed to read doc file",
-            "read_file_error": "Error occurred while reading file",
-            "save_file_error": "Error occurred while saving file",
-            "unsupported_export_format": "Unsupported export format",
-            "pdf_export_not_implemented": "PDF export function not implemented yet",
             "no_content_to_export": "No content to export",
             "file_load_success": "File loaded successfully",
             "file_save_success": "File saved successfully",
@@ -83,5 +74,35 @@ class English(BaseLanguage):
             "support_author_title": "Support Author",
             "support_methods": "Support Methods",
             "close": "Close",
+
+            # 进度窗口文本
+            "reading_file": "Reading file...",
+            "processing": "Processing",
+            "completed": "Completed",
+            "file_read_complete": "File read complete",
+
+            # 主窗口标题
+            "main_window_title": "Text Processing Tool",
+
+            # 文件管理器相关文本
+            "file_not_exist": "File does not exist",
+            "unsupported_format": "Unsupported file format",
+            "read_file_error": "Error occurred while reading file",
+            "decode_error": "Unable to decode file encoding",
+            "reading_file_progress": "Reading file",
+            "parsing_docx": "Parsing Word document...",
+            "converting_doc": "Converting DOC format...",
+            "conversion_complete": "Conversion complete",
+            "read_docx_error": "Failed to read docx file",
+            "read_doc_error": "Failed to read doc file",
+            "save_file_error": "Error occurred while saving file",
+            "unsupported_export_format": "Unsupported export format",
+
+            # 文件过滤器文本
+            "supported_files": "Supported files",
+            "word_documents": "Word documents",
+            "word_97_2003_documents": "Word 97-2003 documents",
+            "text_files": "Text files",
+            "all_files": "All files",
         }
         return texts.get(key, key)

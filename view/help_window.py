@@ -77,7 +77,7 @@ class HelpWindow:
    - 可视化数据分析图表
 
 7. {self.language_manager.get_text('export')}
-   - 支持导出为 .docx, .txt, .pdf 格式
+   - 支持导出为 .docx, .txt 格式
    - 保留文本格式和修改记录
 
 更多功能开发中...

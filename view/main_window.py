@@ -1,11 +1,16 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from model.document_model import DocumentModel
 
 
 class Observer(ABC):
     @abstractmethod
-    def update(self):
+    def on_model_updated(self, model: "DocumentModel", event_type: str):
+        """当模型更新时调用"""
         pass
 
 
@@ -14,7 +19,7 @@ class MainWindow(Observer):
         self.root = root
         self.controller = controller
         self.language_manager = language_manager
-        self.current_file_path = ""  # 保存当前文件路径
+        self.current_file_path = ""
 
         # 设置通用字体
         self.setup_fonts()
@@ -22,18 +27,17 @@ class MainWindow(Observer):
 
     def setup_fonts(self):
         """设置通用字体"""
-        # 尝试使用系统通用字体，确保清晰度
-        self.default_font = ("Microsoft YaHei", 10)  # 微软雅黑，适合中文显示
-        self.label_font = ("Microsoft YaHei", 9)  # 标签字体
-        self.text_font = ("Consolas", 11)  # 等宽字体，适合代码和文本显示
+        self.default_font = ("Microsoft YaHei", 10)
+        self.label_font = ("Microsoft YaHei", 9)
+        self.text_font = ("Consolas", 11)
 
         # 设置全局字体
         self.root.option_add("*Font", self.default_font)
 
     def setup_ui(self):
-        self.root.title("文本处理工具")
+        self.root.title(self.language_manager.get_text("main_window_title"))
         self.root.geometry("800x600")
-        self.root.minsize(400, 300)  # 设置最小大小为400x300
+        self.root.minsize(520, 400)
         self.update_ui_text()
 
         # 主框架
@@ -67,11 +71,10 @@ class MainWindow(Observer):
         self.file_frame = ttk.LabelFrame(parent, text=self.language_manager.get_text("file_selection"))
         self.file_frame.pack(fill=tk.X, pady=(0, 10))
 
-        # 文件路径显示标签 - 使用Frame包装实现多行显示
+        # 文件路径显示标签
         path_frame = ttk.Frame(self.file_frame)
         path_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        # 创建三行标签用于显示文件路径
         self.file_path_labels = []
         for i in range(3):
             label = ttk.Label(path_frame, text="", font=self.label_font)
@@ -109,17 +112,17 @@ class MainWindow(Observer):
         self.toolbar = ttk.Frame(parent)
         self.toolbar.pack(fill=tk.X, pady=(0, 10))
 
-        # 语言选择标签 - 使用多语言支持
+        # 语言选择标签
         self.language_label = ttk.Label(self.toolbar, text=self.language_manager.get_text("language_label"))
         self.language_label.pack(side=tk.LEFT, padx=(0, 5))
 
-        # 语言选择下拉框 - 设置为只读模式
+        # 语言选择下拉框
         self.language_var = tk.StringVar(value="简体中文")
         self.language_combo = ttk.Combobox(
             self.toolbar,
             textvariable=self.language_var,
             values=["简体中文", "繁体中文", "English", "日本語"],
-            state="readonly",  # 设置为只读，用户不能输入文字
+            state="readonly",
             width=12
         )
         self.language_combo.pack(side=tk.LEFT, padx=(0, 5))
@@ -149,7 +152,7 @@ class MainWindow(Observer):
         self.text_frame = ttk.LabelFrame(parent, text=self.language_manager.get_text("document_content"))
         self.text_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 创建文本显示区域，使用等宽字体
+        # 创建文本显示区域
         self.text_display = tk.Text(self.text_frame, wrap=tk.WORD, font=self.text_font)
         scrollbar = ttk.Scrollbar(self.text_frame, command=self.text_display.yview)
         self.text_display.config(yscrollcommand=scrollbar.set)
@@ -174,72 +177,19 @@ class MainWindow(Observer):
                                       state=tk.DISABLED)
         self.next_button.pack(side=tk.LEFT)
 
-    def format_file_path(self, file_path: str) -> list:
-        """格式化文件路径，返回三行文本列表"""
-        if not file_path:
-            return [self.language_manager.get_text("no_file_selected"), "", ""]
-
-        # 如果路径长度小于等于90个字符，直接显示在一行
-        if len(file_path) <= 90:
-            lines = [file_path, "", ""]
-        else:
-            # 保留最后90个字符，前面加省略号
-            truncated_path = "..." + file_path[-87:]
-            # 每行最多30个字符
-            lines = []
-            for i in range(0, min(len(truncated_path), 90), 30):
-                end_index = min(i + 30, len(truncated_path))
-                lines.append(truncated_path[i:end_index])
-
-            # 补足三行
-            while len(lines) < 3:
-                lines.append("")
-
-        return lines
-
-    def update_ui_text(self):
-        """更新UI文本"""
-        # 更新文件选择区域
-        if hasattr(self, 'file_frame'):
-            self.file_frame.config(text=self.language_manager.get_text("file_selection"))
-
-            # 更新选择文件按钮文本
-            if hasattr(self, 'select_file_button'):
-                self.select_file_button.config(text=self.language_manager.get_text("select_file"))
-
-            # 更新文件路径显示
+    def on_model_updated(self, model: "DocumentModel", event_type: str):
+        """观察者模式：当模型更新时调用"""
+        if event_type == "file_loaded":
+            # 文件加载完成
+            self.current_file_path = model.file_path
             self.update_file_path_display()
+            self.display_file_content(model.original_content)
+            self.update_button_states(model)
 
-        # 更新处理按钮区域
-        if hasattr(self, 'button_frame'):
-            self.button_frame.config(text=self.language_manager.get_text("text_processing"))
-
-            for key, button in self.buttons.items():
-                button.config(text=self.language_manager.get_text(key))
-
-        # 更新工具栏文本
-        if hasattr(self, 'language_label'):
-            self.language_label.config(text=self.language_manager.get_text("language_label"))
-
-        if hasattr(self, 'help_button'):
-            self.help_button.config(text=self.language_manager.get_text("help"))
-
-        if hasattr(self, 'support_button'):
-            self.support_button.config(text=self.language_manager.get_text("support_author"))
-
-        # 更新文本显示区域
-        if hasattr(self, 'text_frame'):
-            self.text_frame.config(text=self.language_manager.get_text("document_content"))
-
-        # 更新导航按钮
-        if hasattr(self, 'prev_button'):
-            self.prev_button.config(text=self.language_manager.get_text("previous_modification"))
-            self.next_button.config(text=self.language_manager.get_text("next_modification"))
-
-    def set_file_path(self, file_path: str):
-        """设置当前文件路径并更新显示"""
-        self.current_file_path = file_path
-        self.update_file_path_display()
+        elif event_type == "content_modified":
+            # 内容被修改
+            self.display_file_content(model.modified_content)
+            self.update_button_states(model)
 
     def update_file_path_display(self):
         """更新文件路径显示"""
@@ -251,10 +201,85 @@ class MainWindow(Observer):
                 else:
                     label.config(text="")
 
-    def update(self):
-        """观察者更新方法"""
-        # 当model发生变化时调用
-        pass
+    def format_file_path(self, file_path: str) -> list:
+        """格式化文件路径，返回三行文本列表"""
+        if not file_path:
+            return [self.language_manager.get_text("no_file_selected"), "", ""]
+
+        if len(file_path) > 60:
+            file_path = "..." + file_path[-57:]
+        lines = []
+        for i in range(0, min(len(file_path), 60), 20):
+            end_index = min(i + 20, len(file_path))
+            lines.append(file_path[i:end_index])
+
+        while len(lines) < 3:
+            lines.append("")
+
+        return lines
+
+    def display_file_content(self, content: str):
+        """显示文件内容"""
+        if hasattr(self, 'text_display'):
+            self.text_display.delete(1.0, tk.END)
+            if content:
+                self.text_display.insert(1.0, content)
+            self.text_display.update_idletasks()
+
+    def update_button_states(self, model: "DocumentModel"):
+        """更新按钮状态"""
+        has_content = bool(model.original_content)
+        has_modified_content = bool(model.modified_content)
+
+        # 更新处理按钮状态
+        if hasattr(self, 'buttons'):
+            for button_key, button in self.buttons.items():
+                if button_key not in ['smart_analysis', 'export']:
+                    button.config(state=tk.NORMAL if has_content else tk.DISABLED)
+
+        # 更新导出按钮状态
+        if hasattr(self, 'buttons') and 'export' in self.buttons:
+            self.buttons['export'].config(
+                state=tk.NORMAL if has_modified_content else tk.DISABLED
+            )
+
+        # 智能分析按钮始终可用
+        if hasattr(self, 'buttons') and 'smart_analysis' in self.buttons:
+            self.buttons['smart_analysis'].config(state=tk.NORMAL)
+
+    def update_ui_text(self):
+        """更新UI文本"""
+        # 更新主窗口标题
+        self.root.title(self.language_manager.get_text("main_window_title"))
+
+        # 更新文件选择区域
+        if hasattr(self, 'file_frame'):
+            self.file_frame.config(text=self.language_manager.get_text("file_selection"))
+            self.select_file_button.config(text=self.language_manager.get_text("select_file"))
+            self.update_file_path_display()
+
+        # 更新处理按钮区域
+        if hasattr(self, 'button_frame'):
+            self.button_frame.config(text=self.language_manager.get_text("text_processing"))
+            for key, button in self.buttons.items():
+                button.config(text=self.language_manager.get_text(key))
+
+        # 更新工具栏
+        if hasattr(self, 'language_label'):
+            self.language_label.config(text=self.language_manager.get_text("language_label"))
+        if hasattr(self, 'help_button'):
+            self.help_button.config(text=self.language_manager.get_text("help"))
+        if hasattr(self, 'support_button'):
+            self.support_button.config(text=self.language_manager.get_text("support_author"))
+
+        # 更新文本显示区域
+        if hasattr(self, 'text_frame'):
+            self.text_frame.config(text=self.language_manager.get_text("document_content"))
+
+        # 更新导航按钮
+        if hasattr(self, 'prev_button'):
+            self.prev_button.config(text=self.language_manager.get_text("previous_modification"))
+            self.next_button.config(text=self.language_manager.get_text("next_modification"))
 
     def show_error(self, message: str):
         messagebox.showerror(self.language_manager.get_text("error"), message)

@@ -40,15 +40,6 @@ class Japanese(BaseLanguage):
             "support_window_title": "作者を支援",
 
             # 错误和信息消息
-            "file_not_exist": "ファイルが存在しません",
-            "unsupported_format": "サポートされていないファイル形式",
-            "decode_error": "ファイルのエンコーディングをデコードできません",
-            "read_docx_error": "docxファイルの読み取りに失敗しました",
-            "read_doc_error": "docファイルの読み取りに失敗しました",
-            "read_file_error": "ファイルの読み取り中にエラーが発生しました",
-            "save_file_error": "ファイルの保存中にエラーが発生しました",
-            "unsupported_export_format": "サポートされていないエクスポート形式",
-            "pdf_export_not_implemented": "PDFエクスポート機能はまだ実装されていません",
             "no_content_to_export": "エクスポートする内容がありません",
             "file_load_success": "ファイルの読み込みに成功しました",
             "file_save_success": "ファイルの保存に成功しました",
@@ -83,5 +74,35 @@ class Japanese(BaseLanguage):
             "support_author_title": "作者を支援",
             "support_methods": "支援方法",
             "close": "閉じる",
+
+            # 进度窗口文本
+            "reading_file": "ファイルを読み込み中...",
+            "processing": "処理中",
+            "completed": "完了",
+            "file_read_complete": "ファイル読み込み完了",
+
+            # 主窗口标题
+            "main_window_title": "テキスト処理ツール",
+
+            # 文件管理器相关文本
+            "file_not_exist": "ファイルが存在しません",
+            "unsupported_format": "サポートされていないファイル形式",
+            "read_file_error": "ファイルの読み取り中にエラーが発生しました",
+            "decode_error": "ファイルのエンコーディングをデコードできません",
+            "reading_file_progress": "ファイルを読み込み中",
+            "parsing_docx": "Word文書を解析中...",
+            "converting_doc": "DOC形式を変換中...",
+            "conversion_complete": "変換完了",
+            "read_docx_error": "docxファイルの読み取りに失敗しました",
+            "read_doc_error": "docファイルの読み取りに失敗しました",
+            "save_file_error": "ファイルの保存中にエラーが発生しました",
+            "unsupported_export_format": "サポートされていないエクスポート形式",
+
+            # 文件过滤器文本
+            "supported_files": "サポートされているファイル",
+            "word_documents": "Word文書",
+            "word_97_2003_documents": "Word 97-2003文書",
+            "text_files": "テキストファイル",
+            "all_files": "すべてのファイル",
         }
         return texts.get(key, key)
