@@ -35,7 +35,7 @@ class MainWindow(Observer):
         self.root.option_add("*Font", self.default_font)
 
     def setup_ui(self):
-        self.root.title(self.language_manager.get_text("main_window_title"))
+        self.root.title("文本处理工具")
         self.root.geometry("800x600")
         self.root.minsize(520, 400)
         self.update_ui_text()
@@ -152,13 +152,41 @@ class MainWindow(Observer):
         self.text_frame = ttk.LabelFrame(parent, text=self.language_manager.get_text("document_content"))
         self.text_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 创建文本显示区域
-        self.text_display = tk.Text(self.text_frame, wrap=tk.WORD, font=self.text_font)
-        scrollbar = ttk.Scrollbar(self.text_frame, command=self.text_display.yview)
-        self.text_display.config(yscrollcommand=scrollbar.set)
+        # 创建文本显示区域 - 添加水平和垂直滚动条
+        text_container = ttk.Frame(self.text_frame)
+        text_container.pack(fill=tk.BOTH, expand=True)
+
+        # 垂直滚动条
+        v_scrollbar = ttk.Scrollbar(text_container, orient=tk.VERTICAL)
+        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # 文本显示区域
+        self.text_display = tk.Text(
+            text_container,
+            wrap=tk.WORD,  # 水平方向自适应换行
+            font=self.text_font,
+            yscrollcommand=v_scrollbar.set,
+            undo=True,  # 启用内置撤销功能
+            maxundo=-1  # 无限撤销步数
+        )
+
+        # 配置滚动条
+        v_scrollbar.config(command=self.text_display.yview)
 
         self.text_display.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # 绑定文本修改事件
+        self.text_display.bind('<<Modified>>', self._on_text_modified)
+
+    def _on_text_modified(self, event):
+        """当文本被修改时调用"""
+        if self.text_display.edit_modified():
+            # 获取当前文本内容
+            content = self.text_display.get(1.0, tk.END)
+            # 通知控制器文本已被修改
+            self.controller.on_text_edited(content.strip())
+            # 重置修改标志
+            self.text_display.edit_modified(False)
 
     def setup_navigation(self, parent):
         self.nav_frame = ttk.Frame(parent)
@@ -221,9 +249,17 @@ class MainWindow(Observer):
     def display_file_content(self, content: str):
         """显示文件内容"""
         if hasattr(self, 'text_display'):
+            # 保存当前光标位置
+            current_position = self.text_display.index(tk.INSERT)
+
             self.text_display.delete(1.0, tk.END)
             if content:
                 self.text_display.insert(1.0, content)
+
+            # 恢复光标位置
+            self.text_display.mark_set(tk.INSERT, current_position)
+            self.text_display.see(current_position)
+
             self.text_display.update_idletasks()
 
     def update_button_states(self, model: "DocumentModel"):
@@ -249,9 +285,6 @@ class MainWindow(Observer):
 
     def update_ui_text(self):
         """更新UI文本"""
-        # 更新主窗口标题
-        self.root.title(self.language_manager.get_text("main_window_title"))
-
         # 更新文件选择区域
         if hasattr(self, 'file_frame'):
             self.file_frame.config(text=self.language_manager.get_text("file_selection"))
