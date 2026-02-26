@@ -31,6 +31,8 @@ class ChineseTraditional(BaseLanguage):
             "previous_modification": "前一處修改",
             "next_modification": "後一處修改",
             "language_label": "語言:",
+            "sort_by_timestamp": "按時間戳排序",
+            "reparse": "重新解析",
 
             # 弹窗标题
             "error": "錯誤",
@@ -48,6 +50,8 @@ class ChineseTraditional(BaseLanguage):
             "process_failed": "處理失敗",
             "smart_process_completed": "智能自動處理完成",
             "smart_process_failed": "智能自動處理失敗",
+            "no_timestamp_to_sort": "沒有時間戳可排序",
+            "no_content_to_reparse": "沒有內容可重新解析",
 
             # 分析窗口文本
             "word_count_stats": "字數統計",

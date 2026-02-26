@@ -1,34 +1,3 @@
-"""
-text_processor/
-├── main.py
-├── model/
-│   ├── __init__.py
-│   ├── document_model.py
-│   ├── text_processor.py
-│   └── language_detector.py
-├── view/
-│   ├── __init__.py
-│   ├── main_window.py
-│   ├── analysis_window.py
-│   ├── help_window.py
-│   └── support_window.py
-├── controller/
-│   ├── __init__.py
-│   └── main_controller.py
-├── languages/
-│   ├── __init__.py
-│   ├── language_factory.py
-│   ├── base_language.py
-│   ├── chinese_simplified.py
-│   ├── chinese_traditional.py
-│   ├── english.py
-│   └── japanese.py
-└── utils/
-    ├── __init__.py
-    ├── file_manager.py
-    └── config.py
-"""
-
 import tkinter as tk
 from controller.main_controller import MainController
 

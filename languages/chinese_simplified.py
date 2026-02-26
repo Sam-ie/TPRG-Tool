@@ -31,6 +31,8 @@ class ChineseSimplified(BaseLanguage):
             "previous_modification": "前一处修改",
             "next_modification": "后一处修改",
             "language_label": "语言:",
+            "sort_by_timestamp": "按时间戳排序",
+            "reparse": "重新解析",
 
             # 弹窗标题
             "error": "错误",
@@ -48,6 +50,8 @@ class ChineseSimplified(BaseLanguage):
             "process_failed": "处理失败",
             "smart_process_completed": "智能自动处理完成",
             "smart_process_failed": "智能自动处理失败",
+            "no_timestamp_to_sort": "没有时间戳可排序",
+            "no_content_to_reparse": "没有内容可重新解析",
 
             # 分析窗口文本
             "word_count_stats": "字数统计",

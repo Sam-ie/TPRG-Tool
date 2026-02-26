@@ -98,9 +98,11 @@ class MainWindow(Observer):
             ("deduplicate", self.controller.deduplicate),
             ("spell_check", self.controller.spell_check),
             ("correct_symbols", self.controller.correct_symbols),
-            ("smart_auto_process", self.controller.smart_auto_process),
+            ("smart_auto_process", self.controller.text_processor),
             ("smart_analysis", self.controller.show_analysis),
-            ("export", self.controller.export_file)
+            ("export", self.controller.export_file),
+            ("sort_by_timestamp", self.controller.sort_by_timestamp),
+            ("reparse", self.controller.reparse_from_editor)
         ]
 
         for key, command in button_configs:
@@ -163,16 +165,14 @@ class MainWindow(Observer):
         # 文本显示区域
         self.text_display = tk.Text(
             text_container,
-            wrap=tk.WORD,  # 水平方向自适应换行
+            wrap=tk.WORD,
             font=self.text_font,
             yscrollcommand=v_scrollbar.set,
-            undo=True,  # 启用内置撤销功能
-            maxundo=-1  # 无限撤销步数
+            undo=True,
+            maxundo=-1
         )
 
-        # 配置滚动条
         v_scrollbar.config(command=self.text_display.yview)
-
         self.text_display.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # 绑定文本修改事件
@@ -181,18 +181,14 @@ class MainWindow(Observer):
     def _on_text_modified(self, event):
         """当文本被修改时调用"""
         if self.text_display.edit_modified():
-            # 获取当前文本内容
             content = self.text_display.get(1.0, tk.END)
-            # 通知控制器文本已被修改
             self.controller.on_text_edited(content.strip())
-            # 重置修改标志
             self.text_display.edit_modified(False)
 
     def setup_navigation(self, parent):
         self.nav_frame = ttk.Frame(parent)
         self.nav_frame.pack(fill=tk.X, pady=(10, 0))
 
-        # 暂时禁用导航按钮
         self.prev_button = ttk.Button(self.nav_frame,
                                       text=self.language_manager.get_text("previous_modification"),
                                       command=self.controller.previous_modification,
@@ -207,17 +203,15 @@ class MainWindow(Observer):
 
     def on_model_updated(self, model: "DocumentModel", event_type: str):
         """观察者模式：当模型更新时调用"""
-        if event_type == "file_loaded":
-            # 文件加载完成
-            self.current_file_path = model.file_path
-            self.update_file_path_display()
-            self.display_file_content(model.original_content)
-            self.update_button_states(model)
-
-        elif event_type == "content_modified":
-            # 内容被修改
-            self.display_file_content(model.modified_content)
-            self.update_button_states(model)
+        if event_type in ("file_loaded", "content_modified", "entries_updated"):
+            # 更新文件路径显示（仅在文件加载时）
+            if event_type == "file_loaded":
+                self.current_file_path = model.file_path
+                self.update_file_path_display()
+            # 显示模型生成的文本
+            self.display_file_content(model.get_display_text())
+            # 通知控制器更新按钮状态
+            self.controller.update_button_states()
 
     def update_file_path_display(self):
         """更新文件路径显示"""
@@ -249,55 +243,26 @@ class MainWindow(Observer):
     def display_file_content(self, content: str):
         """显示文件内容"""
         if hasattr(self, 'text_display'):
-            # 保存当前光标位置
             current_position = self.text_display.index(tk.INSERT)
-
             self.text_display.delete(1.0, tk.END)
             if content:
                 self.text_display.insert(1.0, content)
-
-            # 恢复光标位置
             self.text_display.mark_set(tk.INSERT, current_position)
             self.text_display.see(current_position)
-
             self.text_display.update_idletasks()
-
-    def update_button_states(self, model: "DocumentModel"):
-        """更新按钮状态"""
-        has_content = bool(model.original_content)
-        has_modified_content = bool(model.modified_content)
-
-        # 更新处理按钮状态
-        if hasattr(self, 'buttons'):
-            for button_key, button in self.buttons.items():
-                if button_key not in ['smart_analysis', 'export']:
-                    button.config(state=tk.NORMAL if has_content else tk.DISABLED)
-
-        # 更新导出按钮状态
-        if hasattr(self, 'buttons') and 'export' in self.buttons:
-            self.buttons['export'].config(
-                state=tk.NORMAL if has_modified_content else tk.DISABLED
-            )
-
-        # 智能分析按钮始终可用
-        if hasattr(self, 'buttons') and 'smart_analysis' in self.buttons:
-            self.buttons['smart_analysis'].config(state=tk.NORMAL)
 
     def update_ui_text(self):
         """更新UI文本"""
-        # 更新文件选择区域
         if hasattr(self, 'file_frame'):
             self.file_frame.config(text=self.language_manager.get_text("file_selection"))
             self.select_file_button.config(text=self.language_manager.get_text("select_file"))
             self.update_file_path_display()
 
-        # 更新处理按钮区域
         if hasattr(self, 'button_frame'):
             self.button_frame.config(text=self.language_manager.get_text("text_processing"))
             for key, button in self.buttons.items():
                 button.config(text=self.language_manager.get_text(key))
 
-        # 更新工具栏
         if hasattr(self, 'language_label'):
             self.language_label.config(text=self.language_manager.get_text("language_label"))
         if hasattr(self, 'help_button'):
@@ -305,11 +270,9 @@ class MainWindow(Observer):
         if hasattr(self, 'support_button'):
             self.support_button.config(text=self.language_manager.get_text("support_author"))
 
-        # 更新文本显示区域
         if hasattr(self, 'text_frame'):
             self.text_frame.config(text=self.language_manager.get_text("document_content"))
 
-        # 更新导航按钮
         if hasattr(self, 'prev_button'):
             self.prev_button.config(text=self.language_manager.get_text("previous_modification"))
             self.next_button.config(text=self.language_manager.get_text("next_modification"))

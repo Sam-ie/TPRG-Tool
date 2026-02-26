@@ -31,6 +31,8 @@ class Japanese(BaseLanguage):
             "previous_modification": "前の修正",
             "next_modification": "次の修正",
             "language_label": "言語:",
+            "sort_by_timestamp": "タイムスタンプで並べ替え",
+            "reparse": "再解析",
 
             # 弹窗标题
             "error": "エラー",
@@ -48,6 +50,8 @@ class Japanese(BaseLanguage):
             "process_failed": "処理に失敗しました",
             "smart_process_completed": "スマート自動処理が完了しました",
             "smart_process_failed": "スマート自動処理に失敗しました",
+            "no_timestamp_to_sort": "並べ替え可能なタイムスタンプがありません",
+            "no_content_to_reparse": "再解析するコンテンツがありません",
 
             # 分析窗口文本
             "word_count_stats": "文字数統計",

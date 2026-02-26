@@ -31,6 +31,8 @@ class English(BaseLanguage):
             "previous_modification": "Previous Modification",
             "next_modification": "Next Modification",
             "language_label": "Language:",
+            "sort_by_timestamp": "Sort by Timestamp",
+            "reparse": "Reparse",
 
             # 弹窗标题
             "error": "Error",
@@ -48,6 +50,8 @@ class English(BaseLanguage):
             "process_failed": "Process failed",
             "smart_process_completed": "Smart auto process completed",
             "smart_process_failed": "Smart auto process failed",
+            "no_timestamp_to_sort": "No timestamps to sort",
+            "no_content_to_reparse": "No content to reparse",
 
             # 分析窗口文本
             "word_count_stats": "Word Count Statistics",
