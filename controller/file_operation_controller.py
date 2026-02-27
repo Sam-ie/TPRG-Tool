@@ -126,7 +126,7 @@ class FileOperationController:
 
         file_path = filedialog.asksaveasfilename(
             title=self.main_controller.language_manager.get_text("export"),
-            defaultextension=".docx",
+            defaultextension=".txt",
             filetypes=self.file_manager.get_file_filters(import_filter=False)
         )
 

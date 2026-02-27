@@ -23,9 +23,12 @@ class TextEditController(BaseController):
             # 绑定普通按键（不中断连续操作）
             text_widget.bind('<KeyPress>', self._on_key_press)
 
-            # 绑定Backspace和Delete按键（不中断连续操作）
+            # 绑定Backspace和Delete按键
             text_widget.bind('<KeyPress-BackSpace>', self._on_backspace_press)
             text_widget.bind('<KeyPress-Delete>', self._on_delete_press)
+
+            # 绑定粘贴事件
+            text_widget.bind('<<Paste>>', self._on_paste)
 
             # 绑定特殊按键（Enter和Tab作为独立操作）
             text_widget.bind('<KeyRelease-Return>', self._on_enter_key)
@@ -85,6 +88,10 @@ class TextEditController(BaseController):
 
     def _on_backspace_press(self, event):
         """Backspace按键按下事件"""
+        # 先检查是否有选中文本
+        if self._handle_selection_delete(event):
+            return "break"
+        # 无选中，处理单个字符删除
         cursor_pos = self.view.text_display.index(tk.INSERT)
         if self.view.text_display.compare(cursor_pos, ">", "1.0"):
             prev_pos = self.view.text_display.index(f"{cursor_pos} - 1c")
@@ -97,6 +104,10 @@ class TextEditController(BaseController):
 
     def _on_delete_press(self, event):
         """Delete按键按下事件"""
+        # 先检查是否有选中文本
+        if self._handle_selection_delete(event):
+            return "break"
+        # 无选中，处理单个字符删除
         cursor_pos = self.view.text_display.index(tk.INSERT)
         next_pos = self.view.text_display.index(f"{cursor_pos} + 1c")
         if self.view.text_display.compare(next_pos, "<=", "end-1c"):
@@ -106,6 +117,80 @@ class TextEditController(BaseController):
                 self.command_manager.start_delete_command(is_backspace=False)
 
             self.command_manager.add_delete_operation(cursor_pos, deleted_text, is_backspace=False)
+
+    def _handle_selection_delete(self, event) -> bool:
+        """处理选中文本的删除（Backspace/Delete）。返回True表示已处理，应阻止默认行为。"""
+        text_widget = self.view.text_display
+        try:
+            # 检查是否有选中文本
+            sel_start = text_widget.index(tk.SEL_FIRST)
+            sel_end = text_widget.index(tk.SEL_LAST)
+        except tk.TclError:
+            # 没有选中文本
+            return False
+
+        # 有选中文本，提交当前可能正在进行的连续命令
+        self.command_manager.commit_current_commands()
+
+        # 记录被删除的文本和位置
+        deleted_text = text_widget.get(sel_start, sel_end)
+
+        # 开始新的删除命令
+        self.command_manager.start_delete_command(is_backspace=False)  # is_backspace 无实际影响
+        self.command_manager.add_delete_operation(sel_start, deleted_text, is_backspace=False)
+
+        # 执行实际删除
+        text_widget.delete(sel_start, sel_end)
+        # 提交命令
+        self.command_manager.commit_current_commands()
+        return True
+
+    def _on_paste(self, event):
+        """粘贴事件处理"""
+        text_widget = self.view.text_display
+        # 提交当前正在进行的连续命令
+        self.command_manager.commit_current_commands()
+
+        # 获取剪贴板内容
+        try:
+            clipboard_text = text_widget.clipboard_get()
+        except tk.TclError:
+            # 剪贴板为空或无法获取
+            return "break"
+
+        # 检查是否有选中文本（粘贴会先删除选中内容）
+        try:
+            sel_start = text_widget.index(tk.SEL_FIRST)
+            sel_end = text_widget.index(tk.SEL_LAST)
+            has_selection = True
+        except tk.TclError:
+            has_selection = False
+            sel_start = None
+
+        if has_selection:
+            # 先记录删除选中内容的操作
+            deleted_text = text_widget.get(sel_start, sel_end)
+            # 执行删除
+            text_widget.delete(sel_start, sel_end)
+            # 记录删除命令
+            self.command_manager.start_delete_command(is_backspace=False)
+            self.command_manager.add_delete_operation(sel_start, deleted_text, is_backspace=False)
+            self.command_manager.commit_current_commands()
+
+        # 获取插入位置（现在是原选中区域的起始位置，如果没有选中就是当前光标位置）
+        insert_pos = text_widget.index(tk.INSERT)
+
+        # 开始插入命令
+        self.command_manager.start_insert_command()
+        # 执行插入
+        text_widget.insert(insert_pos, clipboard_text)
+        # 记录插入操作（一次性记录整个粘贴文本）
+        self.command_manager.add_insert_operation(insert_pos, clipboard_text)
+        # 提交插入命令
+        self.command_manager.commit_current_commands()
+
+        # 阻止默认粘贴行为，因为已经手动处理
+        return "break"
 
     def _on_arrow_key(self, event):
         """方向键按下事件 - 中断连续操作"""

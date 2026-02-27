@@ -45,42 +45,50 @@ class HelpWindow:
         scrollbar = ttk.Scrollbar(text_frame, command=text_widget.yview)
         text_widget.config(yscrollcommand=scrollbar.set)
 
-        # 添加功能介绍内容
+        # 功能介绍内容（根据当前功能更新）
         content = f"""
-{self.language_manager.get_text('function_intro')}文档
+{self.language_manager.get_text('function_intro')}
 {'=' * 20}
 
-主要功能按钮说明：
+主要功能说明：
 
-1. {self.language_manager.get_text('select_file')}
-   - 支持导入 .docx, .doc, .txt 格式文件
-   - 自动检测文件编码和语言
+1. 【按时间戳排序】
+   • 将多个团的日志混合在一起时，自动按时间顺序整理
+   • 帮助海豹骰整合多群信息，方便回顾
 
-2. {self.language_manager.get_text('deduplicate')}
-   - 去除重复的文本内容
-   - 支持设置相似度阈值
+2. 【去重】
+   • 去除因骰娘不能识别撤回等原因产生的重复内容
+   • 可调节相似度阈值，智能识别近似重复行
 
-3. {self.language_manager.get_text('spell_check')}
-   - 自动检测和修正错别字
-   - 支持多种语言拼写检查
+3. 【错别字修正】
+   • 自动修正常见错别字（支持简中、繁中、英文）
+   • 解决pl发错别字，结团后忘记修改的问题
 
-4. {self.language_manager.get_text('correct_symbols')}
-   - 补全句号、括号、双引号
-   - 英文半角符号转中文全角符号
+4. 【符号修正】
+   • 自动补全句末缺失的句号
+   • 修正左右引号颠倒、引号配对错误
+   • 统一中英文标点格式
 
-5. {self.language_manager.get_text('smart_auto_process')}
-   - 组合执行上述所有处理功能
-   - 一键完成文本优化
+5. 【智能自动处理】
+   • 一键执行去重、错别字修正、符号修正
+   • 快速优化整个文档
 
-6. {self.language_manager.get_text('smart_analysis')}
-   - 生成文本统计报告
-   - 可视化数据分析图表
+6. 【统计分析】
+   • 字数统计：中文字符、英文字母、数字、标点等
+   • 平均RP长度：计算平均每行字符数
+   • 词云分析：根据文档语言智能生成词云（中文/英文/日文）
+   • 标点符号使用统计
 
-7. {self.language_manager.get_text('export')}
-   - 支持导出为 .docx, .txt 格式
-   - 保留文本格式和修改记录
+7. 【多格式导入导出】
+   • 支持从 .txt、.doc、.docx 文件导入
+   • 支持直接复制QQ聊天内容到编辑器
+   • 可导出为 .txt 或 .docx 格式
 
-更多功能开发中...
+8. 【多语言界面】
+   • 支持简体中文、繁体中文、英文、日文
+   • 一键切换界面语言
+
+更多功能持续开发中...
 """
         text_widget.insert(tk.END, content)
         text_widget.config(state=tk.DISABLED)
@@ -103,28 +111,39 @@ class HelpWindow:
 
 基本操作流程：
 
-1. 点击"{self.language_manager.get_text('select_file')}"按钮导入文本文件
-2. 根据需要选择处理功能：
-   - 单独处理：点击对应功能按钮
-   - 批量处理：点击"{self.language_manager.get_text('smart_auto_process')}"
-3. 查看处理结果，文本会以审阅模式显示
-4. 使用导航按钮查看具体修改位置
-5. 满意后点击"{self.language_manager.get_text('export')}"保存结果
+1. 导入文本
+   • 点击“选择文件”按钮，导入 .txt/.doc/.docx 文件
+   • 或直接将聊天记录复制粘贴到编辑器中
+
+2. 调整顺序（可选）
+   • 点击“按时间戳排序”按钮，自动将多个团的日志按时间整理
+
+3. 处理文本
+   • 单独处理：点击“去重”、“错别字修正”、“符号修正”分别执行
+   • 批量处理：点击“智能自动处理”一键完成所有优化
+
+4. 查看分析
+   • 点击“智能分析”打开分析窗口，查看字数统计、词云、标点统计
+   • 词云支持中/英/日文，自动过滤停用词和无意义字符
+
+5. 导出结果
+   • 点击“导出”按钮，默认以“文本处理记录.txt”为名保存
+   • 若重名自动添加编号，可另选 .docx 格式
 
 注意事项：
 
-• 支持简体中文、繁体中文、英文、日文文本
-• 处理时会自动跳过空行和时间字符串
-• 导出功能支持多种格式选择
-• 所有修改都有记录，可随时撤销
+• 时间戳排序需文本中包含标准时间格式（如 2023-01-01 12:34:56）
+• 错别字修正依赖语言库（中文4000万字语料），日文暂只支持符号修正
+• 错别字修正时间较长（200字/秒），不是卡死，请耐心等待
+• 文本框中的修改支持撤销/重做（Ctrl+Z / Ctrl+Y）
 
-快捷键说明：
+快捷键：
 
-• Ctrl+O: 打开文件
-• Ctrl+S: 保存文件
+• Ctrl+Z: 撤销
+• Ctrl+Y: 重做
 • F1: 显示帮助
 
-更多功能开发中...
+更多使用技巧请关注后续版本。
 """
         text_widget.insert(tk.END, content)
         text_widget.config(state=tk.DISABLED)
@@ -137,21 +156,20 @@ class HelpWindow:
         about_text = f"""
 文本处理工具 v1.0
 
-这是一个多功能文本处理软件，支持：
+一款专为跑团日志优化设计的文本处理软件。
 
-• 多语言文本处理
-• 智能文本优化
-• 可视化数据分析
-• 多种格式导入导出
+主要特点：
+• 智能去重、错别字修正、符号补全
+• 多团日志按时间戳自动排序
+• 支持简中/繁中/英文/日文界面
+• 词云与字数统计可视化分析
+• 直接复制粘贴或导入 txt/doc/docx
 
-开发团队：TODO
+开发者：小雨
 版本号：1.0.0
-发布日期：2024年
+发布日期：2026年
 
-技术支持：TODO
-反馈邮箱：TODO
-
-感谢使用本软件！
+感谢使用！您的支持是持续改进的动力。
 """
         label = ttk.Label(parent, text=about_text, font=("Microsoft YaHei", 10), justify=tk.LEFT)
         label.pack(expand=True, padx=20, pady=20)

@@ -23,7 +23,7 @@ class MainController:
         self.file_operation_controller = FileOperationController(self)
         self.function_button_controller = FunctionButtonController(self)
 
-        self.update_button_states()
+        self.update_button_states()  # 虽然按钮始终启用，但保留以兼容现有结构
 
     def on_text_edited(self, content: str):
         self.update_button_states()
@@ -75,6 +75,8 @@ class MainController:
 
     def sort_by_timestamp(self):
         """按时间戳排序"""
+        # 先同步编辑器内容（如果修改过则重新解析）
+        self.sync_model_with_editor_if_needed()
         if self.model.sort_by_timestamp():
             self.view.display_file_content(self.model.get_display_text())
             self.update_button_states()
@@ -84,7 +86,7 @@ class MainController:
             )
 
     def reparse_from_editor(self):
-        """使用编辑器中的文本重新解析为 LogEntry"""
+        """使用编辑器中的文本重新解析为 LogEntry（保留，供内部同步使用）"""
         editor_content = self.view.text_display.get(1.0, tk.END).strip()
         if not editor_content:
             self.view.show_error(self.language_manager.get_text("no_content_to_reparse"))
@@ -99,33 +101,8 @@ class MainController:
             self.reparse_from_editor()
 
     def update_button_states(self):
-        has_entries = len(self.model.entries) > 0
-        editor_content = self.view.text_display.get(1.0, tk.END).strip()
-        has_editor_content = bool(editor_content)
-
-        if hasattr(self.view, 'buttons'):
-            for button_key, button in self.view.buttons.items():
-                if button_key not in ['smart_analysis', 'export', 'sort_by_timestamp', 'reparse']:
-                    button.config(state=tk.NORMAL if has_entries else tk.DISABLED)
-
-        if hasattr(self.view, 'buttons') and 'export' in self.view.buttons:
-            self.view.buttons['export'].config(
-                state=tk.NORMAL if has_editor_content else tk.DISABLED
-            )
-
-        if hasattr(self.view, 'buttons') and 'smart_analysis' in self.view.buttons:
-            self.view.buttons['smart_analysis'].config(state=tk.NORMAL)
-
-        if hasattr(self.view, 'buttons') and 'sort_by_timestamp' in self.view.buttons:
-            has_timestamp = any(entry.timestamp for entry in self.model.entries)
-            self.view.buttons['sort_by_timestamp'].config(
-                state=tk.NORMAL if has_entries and has_timestamp else tk.DISABLED
-            )
-
-        if hasattr(self.view, 'buttons') and 'reparse' in self.view.buttons:
-            self.view.buttons['reparse'].config(
-                state=tk.NORMAL if has_editor_content else tk.DISABLED
-            )
+        # 所有按钮保持启用，无需特殊处理
+        pass
 
     def change_language(self, event):
         language_map = {

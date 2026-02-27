@@ -94,15 +94,15 @@ class MainWindow(Observer):
         self.button_frame.pack(fill=tk.X)
 
         self.buttons = {}
+        # 按钮顺序：按时间戳排序排第一，其他保持原顺序
         button_configs = [
+            ("sort_by_timestamp", self.controller.sort_by_timestamp),
             ("deduplicate", self.controller.deduplicate),
             ("spell_check", self.controller.spell_check),
             ("correct_symbols", self.controller.correct_symbols),
-            ("smart_auto_process", self.controller.text_processor),
+            ("smart_auto_process", self.controller.smart_auto_process),
             ("smart_analysis", self.controller.show_analysis),
             ("export", self.controller.export_file),
-            ("sort_by_timestamp", self.controller.sort_by_timestamp),
-            ("reparse", self.controller.reparse_from_editor)
         ]
 
         for key, command in button_configs:
@@ -210,7 +210,7 @@ class MainWindow(Observer):
                 self.update_file_path_display()
             # 显示模型生成的文本
             self.display_file_content(model.get_display_text())
-            # 通知控制器更新按钮状态
+            # 通知控制器更新按钮状态（虽然按钮始终启用，但仍保留调用以兼容其他逻辑）
             self.controller.update_button_states()
 
     def update_file_path_display(self):

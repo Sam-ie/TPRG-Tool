@@ -39,7 +39,7 @@ class FunctionButtonController:
     def smart_auto_process(self):
         """智能自动处理"""
         self.main_controller.sync_model_with_editor_if_needed()
-        success, message_key = self.main_controller.model.text_processor()
+        success, message_key = self.main_controller.model.smart_auto_process()
         if not success:
             self.main_controller.view.show_error(
                 self.main_controller.language_manager.get_text(message_key)
