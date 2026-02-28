@@ -1,5 +1,5 @@
 import re
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Callable
 from dataclasses import dataclass
 from .language_detector import LanguageDetector
 from .text_processor import TextProcessorManager
@@ -146,18 +146,10 @@ class DocumentModel:
         """生成显示文本，时间戳只显示时间部分"""
         lines = []
         for i, entry in enumerate(self.entries):
-            display_time = ""
-            if entry.timestamp:
-                parts = entry.timestamp.split()
-                if len(parts) > 1:
-                    display_time = parts[-1]
-                else:
-                    display_time = entry.timestamp
-
             if entry.player_name and entry.timestamp:
-                lines.append(f"{entry.player_name}： {display_time}")
+                lines.append(f"{entry.player_name}: {entry.timestamp}")
             elif entry.timestamp:
-                lines.append(display_time)
+                lines.append(entry.timestamp)
 
             content_parts = entry.content.split('\n') if entry.content else [""]
             for part in content_parts:
@@ -180,7 +172,15 @@ class DocumentModel:
         self.notify_observers("entries_updated")
         return True
 
-    def process_text(self, operation: str) -> Tuple[bool, str]:
+    def process_text(self, operation: str,
+                     progress_callback: Callable[[int, int, str], None] = None,
+                     stop_check: Optional[Callable[[], bool]] = None) -> Tuple[bool, str]:
+        """
+        处理文本（去重、错别字修正、符号修正）
+        :param operation: 'deduplicate', 'spell_check', 'correct_symbols'
+        :param progress_callback: 进度回调函数，参数 (current, total, status)
+        :param stop_check: 可选函数，返回True表示应停止处理
+        """
         if not self.entries:
             return False, "please_load_file_first"
 
@@ -189,40 +189,82 @@ class DocumentModel:
                 self.entries = self.processor_manager.deduplicate_entries(
                     self.entries, self.similarity_threshold
                 )
-            else:
+            elif operation == 'spell_check':
+                # 收集所有需要处理的段落
+                paragraph_tasks = []  # (entry, paragraph_index, text)
                 for entry in self.entries:
-                    result, modifications = self.processor_manager.process_text(operation, entry.content)
-                    entry.content = result
+                    paragraphs = entry.content.split('\n')
+                    for p_idx, para in enumerate(paragraphs):
+                        if para.strip():
+                            paragraph_tasks.append((entry, p_idx, para))
+                total = len(paragraph_tasks)
+                if total == 0:
+                    return True, "process_completed"
 
-            self.notify_observers("content_modified")
+                for i, (entry, p_idx, para) in enumerate(paragraph_tasks):
+                    # 检查是否应取消
+                    if stop_check and stop_check():
+                        # 停止处理，返回成功（已处理部分有效）
+                        return True, "process_cancelled"
+
+                    result, _ = self.processor_manager.process_text('spell_check', para)
+                    # 更新该段落
+                    paras = entry.content.split('\n')
+                    paras[p_idx] = result
+                    entry.content = '\n'.join(paras)
+                    if progress_callback:
+                        progress_callback(i + 1, total, f"处理段落 {i + 1}/{total}")
+            elif operation == 'correct_symbols':
+                for entry in self.entries:
+                    result, _ = self.processor_manager.process_text('correct_symbols', entry.content)
+                    entry.content = result
+            else:
+                return False, "unsupported_operation"
+
             return True, "process_completed"
         except Exception as e:
             print(f"处理失败: {e}")
             return False, "process_failed"
 
-    def smart_auto_process(self) -> Tuple[bool, str]:
+    def smart_auto_process(self,
+                           progress_callback: Callable[[int, int, str], None] = None,
+                           stop_check: Optional[Callable[[], bool]] = None) -> Tuple[bool, str]:
+        """智能自动处理：先去重，再对每个段落做符号修正和错别字修正"""
         if not self.entries:
             return False, "please_load_file_first"
 
         try:
+            # 先去重（通常较快，不设进度）
             self.entries = self.processor_manager.deduplicate_entries(
                 self.entries, self.similarity_threshold
             )
 
+            # 收集所有需要处理的段落
+            paragraph_tasks = []
             for entry in self.entries:
-                result, _ = self.processor_manager.text_processor(entry.content)
-                entry.content = result
-            self.notify_observers("content_modified")
+                paragraphs = entry.content.split('\n')
+                for p_idx, para in enumerate(paragraphs):
+                    if para.strip():
+                        paragraph_tasks.append((entry, p_idx, para))
+            total = len(paragraph_tasks)
+            if total == 0:
+                return True, "smart_process_completed"
+
+            for i, (entry, p_idx, para) in enumerate(paragraph_tasks):
+                if stop_check and stop_check():
+                    return True, "smart_process_cancelled"
+
+                # 符号修正
+                corrected, _ = self.processor_manager.process_text('correct_symbols', para)
+                # 错别字修正
+                final, _ = self.processor_manager.process_text('spell_check', corrected)
+                # 更新段落
+                paras = entry.content.split('\n')
+                paras[p_idx] = final
+                entry.content = '\n'.join(paras)
+                if progress_callback:
+                    progress_callback(i + 1, total, f"智能处理段落 {i + 1}/{total}")
+
             return True, "smart_process_completed"
         except Exception as e:
             return False, "smart_process_failed"
-
-    def save_file(self, file_path: str, file_type: str) -> Tuple[bool, str]:
-        if not self.entries:
-            return False, "no_content_to_export"
-        full_text = self.get_display_text()
-        from utils.file_manager import FileManager
-        error = FileManager.write_file(file_path, full_text, file_type)
-        if error:
-            return False, error
-        return True, "file_save_success"

@@ -9,9 +9,22 @@ class ProgressWindow:
         self.total_steps = total_steps
         self.current_step = 0
         self._updating = False
+        self.running = True
+        self.cancel_callback = None
 
         self.setup_ui(title)
         self.center_on_parent(parent)
+        self.window.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def set_cancel_callback(self, callback):
+        """设置取消回调函数，当用户关闭窗口时调用"""
+        self.cancel_callback = callback
+
+    def _on_close(self):
+        """窗口关闭时的处理"""
+        if self.cancel_callback:
+            self.cancel_callback()
+        self.close()
 
     def setup_ui(self, title: str):
         self.window.title(title)
@@ -59,16 +72,20 @@ class ProgressWindow:
         self.window.geometry(f"+{x}+{y}")
 
     def update_progress(self, current: int, total: int, status: str = ""):
-        if self._updating:
+        if not self.running or self._updating:
             return
         self._updating = True
         try:
+            if total != self.total_steps:
+                self.total_steps = total
+                self.progress_bar['maximum'] = total
+
             if total > 0:
                 percentage = min(int((current / total) * 100), 100)
             else:
                 percentage = 0
 
-            self.progress_bar['value'] = percentage
+            self.progress_bar['value'] = current
             self.percentage_label.config(text=f"{percentage}%")
 
             if status:
@@ -82,7 +99,10 @@ class ProgressWindow:
             self._updating = False
 
     def complete(self, message: str = ""):
-        self.progress_bar['value'] = 100
+        if not self.running:
+            return
+        max_val = self.progress_bar['maximum']
+        self.progress_bar['value'] = max_val
         self.percentage_label.config(text="100%")
 
         if message:
@@ -94,6 +114,7 @@ class ProgressWindow:
         self.window.after(600, self.close)
 
     def close(self):
+        self.running = False
         if self.window.winfo_exists():
             self.window.grab_release()
             self.window.destroy()

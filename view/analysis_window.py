@@ -2,8 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 import re
 from collections import Counter
+import os
 
-# 尝试导入词云相关库，若缺失则降级显示提示
+# 尝试导入词云相关库
 try:
     import jieba
     from wordcloud import WordCloud
@@ -12,6 +13,32 @@ try:
 except ImportError:
     WORDCLOUD_AVAILABLE = False
     jieba = None
+
+# 停用词文件路径
+DICTIONARY_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dictionary")
+STOPWORD_FILES = {
+    'zh_CN': os.path.join(DICTIONARY_DIR, "Simplified_Chinese_stopwords.txt"),
+    'zh_TW': os.path.join(DICTIONARY_DIR, "Traditional_Chinese_stopwords.txt"),
+    'en': os.path.join(DICTIONARY_DIR, "English_stopwords.txt"),
+    'ja': os.path.join(DICTIONARY_DIR, "Japanese_stopwords.txt"),
+}
+
+
+def load_stopwords(language: str) -> set:
+    """根据语言加载停用词文件"""
+    filepath = STOPWORD_FILES.get(language)
+    if not filepath or not os.path.exists(filepath):
+        return set()
+    stopwords = set()
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                word = line.strip()
+                if word and not word.startswith('#'):
+                    stopwords.add(word)
+    except Exception as e:
+        print(f"加载停用词文件失败 {filepath}: {e}")
+    return stopwords
 
 
 class AnalysisWindow:
@@ -32,45 +59,19 @@ class AnalysisWindow:
         # 文档语言（由模型检测）
         self.detected_language = getattr(model, 'detected_language', 'zh_CN')
 
-        # 中文停用词
-        self.stopwords = {
-            '的', '了', '在', '是', '我', '你', '他', '她', '它', '我们', '你们', '他们',
-            '这个', '那个', '这些', '那些', '和', '与', '或', '就', '都', '而', '而且',
-            '但是', '不过', '因为', '所以', '如果', '那么', '虽然', '然而', '着', '过',
-            '把', '被', '让', '给', '对', '对于', '关于', '由于', '除了', '之外', '等',
-            '没有', '还是', '不能', '可以', '一下', '它们', '仿佛', '似乎', '如同', '像是',
-            '可能', '开始', '再见', '看看', '进行', '查看', '一点', '回合', '她们', '突然',
-            '如何', '什么', '一个', '自己', '这里', '出来', '现在', '已经', '时间', '故事',
-            '东西', '设置', '玩家', '游戏', '日志', '记录', '检定', '理智', '侦查', '聆听',
-            '看见', '发现', '一声', '一块', '看起来', '一只', '一条', '结果', '成功', '失败'
-        }
-
-        # 英文停用词
-        self.english_stopwords = {
-            'a', 'about', 'against', 'all', 'an', 'and', 'any', 'are', 'at', 'be',
-            'been', 'being', 'both', 'but', 'by', 'can', 'don', 'each', 'else', 'end',
-            'few', 'for', 'game', 'he', 'her', 'hers', 'him', 'his', 'how', 'hp', 'i',
-            'if', 'in', 'into', 'is', 'it', 'its', 'join', 'just', 'log', 'me', 'mine',
-            'more', 'most', 'mp', 'my', 'new', 'nn', 'no', 'nor', 'not', 'now', 'off',
-            'on', 'only', 'or', 'other', 'our', 'ours', 'sc', 'set', 'should', 'so',
-            'some', 'st', 'such', 't', 'than', 'that', 'the', 'their', 'theirs', 'them',
-            'then', 'there', 'these', 'they', 'this', 'those', 'to', 'too', 'us', 'very',
-            'was', 'we', 'were', 'what', 'when', 'where', 'which', 'while', 'who',
-            'whom', 'why', 'will', 'with', 'you', 'your', 'yours'
-        }
+        # 加载对应语言的停用词
+        self.stopwords = load_stopwords(self.detected_language)
 
         self.setup_ui()
         self._bind_events()
 
     def setup_ui(self):
         self.window.title(self.language_manager.get_text("analysis_window_title"))
-        self.window.geometry(self.normal_geometry)  # 初始大小
+        self.window.geometry(self.normal_geometry)
 
-        # 主框架
         main_frame = ttk.Frame(self.window)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # 使用Notebook实现标签页
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
@@ -95,11 +96,9 @@ class AnalysisWindow:
         self.setup_todo_tab(todo_frame)
 
     def _bind_events(self):
-        """绑定标签页切换事件，用于恢复窗口大小"""
         self.notebook.bind('<<NotebookTabChanged>>', self._on_tab_changed)
 
     def _on_tab_changed(self, event):
-        """当切换标签页时，如果离开词云标签页，恢复窗口大小"""
         current_tab = self.notebook.index(self.notebook.select())
         wordcloud_index = self.notebook.index(self.wordcloud_frame)
         if current_tab != wordcloud_index:
@@ -250,9 +249,8 @@ class AnalysisWindow:
         )
 
     def generate_wordcloud(self):
-        # 扩大窗口并强制更新布局
         self.window.geometry(self.expanded_geometry)
-        self.window.update()  # 确保画布已调整大小
+        self.window.update()
 
         if not WORDCLOUD_AVAILABLE:
             self._show_wordcloud_placeholder("缺少词云库，无法生成")
@@ -267,7 +265,6 @@ class AnalysisWindow:
         except ValueError:
             max_words = 100
 
-        # 获取画布当前实际尺寸
         canvas_width = self.wordcloud_canvas.winfo_width()
         canvas_height = self.wordcloud_canvas.winfo_height()
         if canvas_width <= 1:
@@ -280,28 +277,27 @@ class AnalysisWindow:
         if lang.startswith('zh'):  # 中文
             filtered_text = ''.join(re.findall(r'[\u4e00-\u9fff]', self.full_content))
             words = jieba.cut(filtered_text)
-            word_list = [w for w in words if len(w) > 1 and w not in self.stopwords]
+            word_list = [w for w in words if w not in self.stopwords]
         elif lang == 'en':  # 英文
             filtered_text = ''.join(re.findall(r'[a-zA-Z\s]', self.full_content))
             words = filtered_text.lower().split()
-            word_list = [w for w in words if len(w) > 1 and w not in self.english_stopwords]
+            word_list = [w for w in words if w not in self.stopwords]
         elif lang == 'ja':  # 日文
             filtered_text = ''.join(re.findall(r'[\u3040-\u30FF\u4e00-\u9fff\s]', self.full_content))
             words = jieba.cut(filtered_text)
-            word_list = [w for w in words if len(w) > 1]
+            word_list = [w for w in words if w not in self.stopwords]
         else:
             filtered_text = ''.join(re.findall(r'[\u4e00-\u9fff]', self.full_content))
             words = jieba.cut(filtered_text)
-            word_list = [w for w in words if len(w) > 1 and w not in self.stopwords]
+            word_list = [w for w in words if w not in self.stopwords]
 
         word_freq = Counter(word_list)
         if not word_freq:
             self._show_wordcloud_placeholder("分词结果为空或全部被过滤")
             return
 
-        # 生成词云
         wc = WordCloud(
-            font_path="simhei.ttf",  # 若无此字体可改为其他中文字体或留空
+            font_path="simhei.ttf",
             width=canvas_width,
             height=canvas_height,
             max_words=max_words,
@@ -312,12 +308,11 @@ class AnalysisWindow:
         image = wc.to_image()
         photo = ImageTk.PhotoImage(image)
 
-        # 在画布上显示，从左上角开始填满
         self.wordcloud_canvas.delete("all")
         self.wordcloud_canvas.create_image(0, 0, image=photo, anchor=tk.NW)
-        self.wordcloud_canvas.image = photo  # 保持引用
+        self.wordcloud_canvas.image = photo
 
-    # ---------- 更多分析标签页（保留 TODO） ----------
+    # ---------- 更多分析标签页 ----------
     def setup_todo_tab(self, parent):
         label = ttk.Label(parent, text=f"{self.language_manager.get_text('more_analysis')}功能待拓展",
                           font=("Microsoft YaHei", 12))
