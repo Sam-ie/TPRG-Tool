@@ -35,7 +35,7 @@ class MainWindow(Observer):
         self.root.option_add("*Font", self.default_font)
 
     def setup_ui(self):
-        self.root.title("文本处理工具")
+        self.root.title(self.language_manager.get_text("main_window_title"))
         self.root.geometry("800x600")
         self.root.minsize(520, 400)
         self.update_ui_text()
