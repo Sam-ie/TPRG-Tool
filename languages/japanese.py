@@ -1,6 +1,5 @@
 from .base_language import BaseLanguage
 
-
 class Japanese(BaseLanguage):
     """日文"""
 
@@ -48,10 +47,13 @@ class Japanese(BaseLanguage):
             "please_load_file_first": "まずファイルを読み込んでください",
             "process_completed": "処理が完了しました",
             "process_failed": "処理に失敗しました",
+            "process_cancelled": "処理がキャンセルされました",
             "smart_process_completed": "スマート自動処理が完了しました",
             "smart_process_failed": "スマート自動処理に失敗しました",
+            "smart_process_cancelled": "スマート処理がキャンセルされました",
             "no_timestamp_to_sort": "並べ替え可能なタイムスタンプがありません",
             "no_content_to_reparse": "再解析するコンテンツがありません",
+            "unsupported_operation": "サポートされていない操作",
 
             # 分析窗口文本
             "word_count_stats": "文字数統計",

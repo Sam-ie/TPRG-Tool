@@ -1,6 +1,5 @@
 from .base_language import BaseLanguage
 
-
 class ChineseTraditional(BaseLanguage):
     """繁体中文"""
 
@@ -48,10 +47,13 @@ class ChineseTraditional(BaseLanguage):
             "please_load_file_first": "請先加載文件",
             "process_completed": "處理完成",
             "process_failed": "處理失敗",
+            "process_cancelled": "處理已取消",
             "smart_process_completed": "智能自動處理完成",
             "smart_process_failed": "智能自動處理失敗",
+            "smart_process_cancelled": "智能處理已取消",
             "no_timestamp_to_sort": "沒有時間戳可排序",
             "no_content_to_reparse": "沒有內容可重新解析",
+            "unsupported_operation": "不支持的操作",
 
             # 分析窗口文本
             "word_count_stats": "字數統計",

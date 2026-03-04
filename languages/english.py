@@ -1,6 +1,5 @@
 from .base_language import BaseLanguage
 
-
 class English(BaseLanguage):
     """英文"""
 
@@ -48,10 +47,13 @@ class English(BaseLanguage):
             "please_load_file_first": "Please load file first",
             "process_completed": "Process completed",
             "process_failed": "Process failed",
+            "process_cancelled": "Process cancelled",
             "smart_process_completed": "Smart auto process completed",
             "smart_process_failed": "Smart auto process failed",
+            "smart_process_cancelled": "Smart process cancelled",
             "no_timestamp_to_sort": "No timestamps to sort",
             "no_content_to_reparse": "No content to reparse",
+            "unsupported_operation": "Unsupported operation",
 
             # 分析窗口文本
             "word_count_stats": "Word Count Statistics",

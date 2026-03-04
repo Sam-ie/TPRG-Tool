@@ -1,6 +1,5 @@
 from .base_language import BaseLanguage
 
-
 class ChineseSimplified(BaseLanguage):
     """简体中文"""
 
@@ -48,10 +47,13 @@ class ChineseSimplified(BaseLanguage):
             "please_load_file_first": "请先加载文件",
             "process_completed": "处理完成",
             "process_failed": "处理失败",
+            "process_cancelled": "处理已取消",
             "smart_process_completed": "智能自动处理完成",
             "smart_process_failed": "智能自动处理失败",
+            "smart_process_cancelled": "智能处理已取消",
             "no_timestamp_to_sort": "没有时间戳可排序",
             "no_content_to_reparse": "没有内容可重新解析",
+            "unsupported_operation": "不支持的操作",
 
             # 分析窗口文本
             "word_count_stats": "字数统计",
