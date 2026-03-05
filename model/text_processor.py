@@ -1,7 +1,6 @@
-# model/text_processor.py
 import re
 import os
-from typing import List, Tuple, Any, Set, Optional
+from typing import List, Tuple, Any, Set, Optional, Callable
 import difflib
 
 # 尝试导入各语言处理库
@@ -57,18 +56,17 @@ def load_word_set(filepath: str) -> Set[str]:
 # ========== 引号修正核心函数 ==========
 def fix_quotes(text: str, lang: str) -> str:
     """修正引号：平衡左右引号，动态调整顺序错误，补齐缺失"""
-    # 定义每种语言的引号对
     quote_configs = {
         'zh_CN': [('“', '”'), ('‘', '’')],
         'zh_TW': [('「', '」'), ('『', '』')],
         'en': [('"', '"'), ("'", "'")],
         'ja': [('「', '」'), ('『', '』')],
     }
-    configs = quote_configs.get(lang, [('"', '"')])  # 默认英文
+    configs = quote_configs.get(lang, [('"', '"')])
 
     for left, right in configs:
         if left == right:
-            # 相同字符引号（如英文双引号），使用计数器法
+            # 相同字符引号
             count = 0
             result_chars = []
             for ch in text:
@@ -84,7 +82,7 @@ def fix_quotes(text: str, lang: str) -> str:
                 result_chars.append(right * count)
             text = ''.join(result_chars)
         else:
-            # 不同字符引号，使用栈匹配
+            # 不同字符引号，栈匹配
             stack = []
             result_chars = []
             for ch in text:
@@ -96,12 +94,10 @@ def fix_quotes(text: str, lang: str) -> str:
                         stack.pop()
                         result_chars.append(ch)
                     else:
-                        # 栈空时出现右引号，将其改为左引号
                         result_chars.append(left)
                         stack.append(left)
                 else:
                     result_chars.append(ch)
-            # 补全未闭合的左引号
             for _ in stack:
                 result_chars.append(right)
             text = ''.join(result_chars)
@@ -109,7 +105,6 @@ def fix_quotes(text: str, lang: str) -> str:
 
 
 def add_period_if_needed(text: str, lang: str) -> str:
-    """如果文本长度≥10且末尾没有句末标点，添加句号"""
     if not text:
         return text
     if len(text) < 10:
@@ -127,7 +122,6 @@ def add_period_if_needed(text: str, lang: str) -> str:
 
 
 def fix_brackets(text: str) -> str:
-    """补全括号（适用于中英文括号）"""
     stack = []
     result = []
     bracket_pairs = {
@@ -145,7 +139,6 @@ def fix_brackets(text: str) -> str:
                 last = stack[-1]
                 if bracket_pairs.get(last) == ch:
                     stack.pop()
-            # 栈空时多余的右括号忽略
         result.append(ch)
 
     for left in reversed(stack):
@@ -154,7 +147,6 @@ def fix_brackets(text: str) -> str:
 
 
 def correct_chinese_symbols(text: str, lang='zh_CN') -> str:
-    """简体/繁体中文符号修正"""
     text = re.sub(r',', '，', text)
     text = re.sub(r'!', '！', text)
     text = re.sub(r'\?', '？', text)
@@ -172,7 +164,6 @@ def correct_chinese_symbols(text: str, lang='zh_CN') -> str:
 
 
 def correct_english_symbols(text: str) -> str:
-    """英文符号修正"""
     text = re.sub(r'，', ',', text)
     text = re.sub(r'。', '.', text)
     text = re.sub(r'！', '!', text)
@@ -191,7 +182,6 @@ def correct_english_symbols(text: str) -> str:
 
 
 def correct_japanese_symbols(text: str) -> str:
-    """日文符号修正"""
     text = re.sub(r',', '、', text)
     text = fix_quotes(text, 'ja')
     text = add_period_if_needed(text, 'ja')
@@ -221,40 +211,38 @@ class BaseTextProcessor:
     def correct_symbols(self, text: str) -> Tuple[str, List[dict]]:
         raise NotImplementedError
 
-    def deduplicate_entries(self, entries: List[Any], threshold: float) -> List[Any]:
-        """对整个条目列表进行去重"""
-        filtered = []
-        for entry in entries:
-            content = entry.content
-            if content and (content[0] in ('（', '(') or content[0:4] == '<img'):
-                continue
-            filtered.append(entry)
+    def deduplicate_entries(self, entries: List[Any], threshold: float,
+                            skip_condition: Callable[[Any], bool] = None) -> List[Any]:
+        """
+        对条目列表进行滑动窗口去重（窗口大小=5）。
+        :param entries: 条目列表
+        :param threshold: 相似度阈值
+        :param skip_condition: 函数，接受一个条目，返回 True 表示该条目无条件保留（不参与去重）
+        :return: 去重后的条目列表
+        """
+        if skip_condition is None:
+            skip_condition = lambda e: False
 
         result = []
-        seen = []
-        special_keywords = [".r", ".log", ".game", "="]
+        recent_kept = []  # 存放最近保留的、需要参与去重的条目
 
-        for entry in reversed(filtered):
-            if any(keyword in entry.content for keyword in special_keywords):
+        for entry in entries:
+            if skip_condition(entry):
                 result.append(entry)
-                seen.append(entry)
                 continue
 
-            if len(entry.content) < 10:
+            duplicate = False
+            # 与最近最多5个条目比较
+            for kept in recent_kept[-5:]:
+                s = difflib.SequenceMatcher(None, entry.content, kept.content)
+                if s.ratio() >= threshold:
+                    duplicate = True
+                    break
+            if not duplicate:
                 result.append(entry)
-                seen.append(entry)
-            else:
-                duplicate = False
-                for kept in seen:
-                    s = difflib.SequenceMatcher(None, entry.content, kept.content)
-                    if s.ratio() >= threshold:
-                        duplicate = True
-                        break
-                if not duplicate:
-                    result.append(entry)
-                    seen.append(entry)
+                recent_kept.append(entry)
 
-        result.reverse()
+        # 重新编号
         for idx, entry in enumerate(result, start=1):
             entry.id = idx
         return result
@@ -264,7 +252,7 @@ class BaseTextProcessor:
 class ChineseSimplifiedProcessor(BaseTextProcessor):
     def __init__(self, similarity_threshold: float = 0.8):
         super().__init__(similarity_threshold)
-        self.load_dictionary(ZH_CN_FREQ)  # 注意：这里实际上加载的是词频文件，但为了统一接口，我们仍称为dictionary
+        self.load_dictionary(ZH_CN_FREQ)
         self.load_stopwords(ZH_CN_STOP)
         self.corrector = None
         if pycorrector:
@@ -354,10 +342,6 @@ class EnglishProcessor(BaseTextProcessor):
         if SymSpell and self.dictionary:
             try:
                 self.sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
-                # 将词典转换为列表供 SymSpell 加载（需要每行一词，频率可选）
-                # 这里简单地将集合写入临时文件或直接加载，但 SymSpell 要求文件路径
-                # 我们可以创建一个临时文件，或者使用 load_dictionary 方法，需要文件路径。
-                # 为简化，将词典保存到临时文件（或使用已有的文件路径）
                 if os.path.exists(EN_DICT):
                     self.sym_spell.load_dictionary(EN_DICT, term_index=0, count_index=None)
                 else:
@@ -394,11 +378,9 @@ class JapaneseProcessor(BaseTextProcessor):
             print("警告: jieba 未安装，日文分词将不可用，纠错功能受限")
 
     def _word_segment(self, text: str) -> List[str]:
-        """日文分词（使用 jieba 作为简易分词器）"""
         if jieba:
             return list(jieba.cut(text))
         else:
-            # 降级：按字符分割
             return list(text)
 
     def spell_check(self, text: str) -> Tuple[str, List[dict]]:
@@ -412,7 +394,6 @@ class JapaneseProcessor(BaseTextProcessor):
             if word in self.dictionary:
                 corrected_words.append(word)
             else:
-                # 尝试在词典中找最相似的词（编辑距离）
                 close_matches = difflib.get_close_matches(word, self.dictionary, n=1, cutoff=0.8)
                 if close_matches:
                     corrected_words.append(close_matches[0])
@@ -461,10 +442,11 @@ class TextProcessorManager:
             raise ValueError(f"不支持的操作: {operation}")
         return processor_func(text)
 
-    def deduplicate_entries(self, entries: List[Any], threshold: float) -> List[Any]:
+    def deduplicate_entries(self, entries: List[Any], threshold: float,
+                            skip_condition: Callable[[Any], bool] = None) -> List[Any]:
         if not self.current_processor:
             raise ValueError("未设置文本处理器")
-        return self.current_processor.deduplicate_entries(entries, threshold)
+        return self.current_processor.deduplicate_entries(entries, threshold, skip_condition)
 
     def text_processor(self, text: str) -> Tuple[str, List[dict]]:
         if not self.current_processor:

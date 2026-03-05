@@ -4,6 +4,7 @@ import re
 from collections import Counter
 import os
 
+# 尝试导入词云相关库
 try:
     import jieba
     from wordcloud import WordCloud
@@ -13,6 +14,7 @@ except ImportError:
     WORDCLOUD_AVAILABLE = False
     jieba = None
 
+# 词典文件路径
 DICTIONARY_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dictionary")
 STOPWORD_FILES = {
     'zh_CN': os.path.join(DICTIONARY_DIR, "Simplified_Chinese_stopwords.txt"),
@@ -21,7 +23,15 @@ STOPWORD_FILES = {
     'ja': os.path.join(DICTIONARY_DIR, "Japanese_stopwords.txt"),
 }
 
+# 词性词典文件（中文）
+POS_DICT_FILES = {
+    'zh_CN': os.path.join(DICTIONARY_DIR, "others", "Simplified_Chinese_dictionary367.txt"),
+    'zh_TW': os.path.join(DICTIONARY_DIR, "others", "Traditional_Chinese_dictionary367.txt"),
+}
+
+
 def load_stopwords(language: str) -> set:
+    """根据语言加载停用词文件"""
     filepath = STOPWORD_FILES.get(language)
     if not filepath or not os.path.exists(filepath):
         return set()
@@ -36,21 +46,53 @@ def load_stopwords(language: str) -> set:
         print(f"加载停用词文件失败 {filepath}: {e}")
     return stopwords
 
+
+def load_pos_dict(language: str) -> dict:
+    """加载词性词典，返回 {词: 词性} 映射"""
+    filepath = POS_DICT_FILES.get(language)
+    if not filepath or not os.path.exists(filepath):
+        return {}
+    pos_dict = {}
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split()
+                if len(parts) >= 2:
+                    word = parts[0]
+                    pos = parts[1]  # 第二列是词性
+                    pos_dict[word] = pos
+    except Exception as e:
+        print(f"加载词性词典失败 {filepath}: {e}")
+    return pos_dict
+
+
 class AnalysisWindow:
     def __init__(self, parent, controller, language_manager):
         self.window = tk.Toplevel(parent)
         self.controller = controller
         self.language_manager = language_manager
 
+        # 窗口尺寸定义
         self.normal_geometry = "400x300"
         self.expanded_geometry = "900x700"
 
+        # 从模型中获取所有 LogEntry（用于后续统计）
         model = self.controller.model
         self.entries = model.entries if hasattr(model, 'entries') else []
+        # 完整内容（用于字数统计和标点统计，包含所有条目）
         self.full_content = "\n".join([entry.content for entry in self.entries if entry.content.strip()])
 
+        # 文档语言（由模型检测）
         self.detected_language = getattr(model, 'detected_language', 'zh_CN')
+
+        # 加载对应语言的停用词
         self.stopwords = load_stopwords(self.detected_language)
+
+        # 缓存词性词典（仅中文）
+        self.pos_dict_cache = {}
 
         self.setup_ui()
         self._bind_events()
@@ -65,18 +107,22 @@ class AnalysisWindow:
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
+        # 字数统计标签页
         stats_frame = ttk.Frame(self.notebook)
         self.notebook.add(stats_frame, text=self.language_manager.get_text("word_count_stats"))
         self.setup_stats_tab(stats_frame)
 
+        # 词云标签页
         self.wordcloud_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.wordcloud_frame, text=self.language_manager.get_text("wordcloud_analysis"))
         self.setup_wordcloud_tab(self.wordcloud_frame)
 
+        # 标点符号标签页
         punctuation_frame = ttk.Frame(self.notebook)
         self.notebook.add(punctuation_frame, text=self.language_manager.get_text("punctuation_analysis"))
         self.setup_punctuation_tab(punctuation_frame)
 
+        # 预留拓展标签页
         todo_frame = ttk.Frame(self.notebook)
         self.notebook.add(todo_frame, text=self.language_manager.get_text("more_analysis"))
         self.setup_todo_tab(todo_frame)
@@ -90,6 +136,7 @@ class AnalysisWindow:
         if current_tab != wordcloud_index:
             self.window.geometry(self.normal_geometry)
 
+    # ---------- 字数统计标签页 ----------
     def setup_stats_tab(self, parent):
         stats_frame = ttk.LabelFrame(parent, text=self.language_manager.get_text("basic_stats"))
         stats_frame.pack(fill=tk.X, padx=10, pady=10)
@@ -105,7 +152,7 @@ class AnalysisWindow:
 
     def _update_stats(self):
         if not self.full_content.strip():
-            stats_lines = [self.language_manager.get_text("no_content_stats")]
+            stats_lines = ["暂无内容可统计"]
         else:
             content = self.full_content
             total_chars = len(content)
@@ -127,13 +174,13 @@ class AnalysisWindow:
             line_count = len(lines)
 
             stats_lines = [
-                f"{self.language_manager.get_text('total_chars')}: {total_chars}",
-                f"{self.language_manager.get_text('chinese_chars')}: {chinese_chars}",
-                f"{self.language_manager.get_text('english_letters')}: {english_letters}",
-                f"{self.language_manager.get_text('digits')}: {digits}",
-                f"{self.language_manager.get_text('punctuation_chars')}: {punctuation_chars}",
-                f"{self.language_manager.get_text('line_count')}: {line_count}",
-                f"{self.language_manager.get_text('avg_line_length')}: {round(total_chars/line_count, 1)}",
+                f"总字符数: {total_chars}",
+                f"中文字符数: {chinese_chars}",
+                f"英文字母数: {english_letters}",
+                f"数字数: {digits}",
+                f"标点符号数: {punctuation_chars}",
+                f"行数: {line_count}",
+                f"平均行长度: {round(total_chars/line_count, 1)}",
             ]
 
         self.stats_text.config(state=tk.NORMAL)
@@ -142,6 +189,7 @@ class AnalysisWindow:
             self.stats_text.insert(tk.END, line + "\n")
         self.stats_text.config(state=tk.DISABLED)
 
+    # ---------- 标点符号标签页 ----------
     def setup_punctuation_tab(self, parent):
         table_frame = ttk.LabelFrame(parent, text=self.language_manager.get_text("punctuation_stats"))
         table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -168,7 +216,7 @@ class AnalysisWindow:
     def _update_punctuation(self):
         if not self.full_content.strip():
             self.punctuation_tree.delete(*self.punctuation_tree.get_children())
-            self.punctuation_tree.insert("", tk.END, values=(self.language_manager.get_text("no_data"), "-", "-"))
+            self.punctuation_tree.insert("", tk.END, values=("无数据", "-", "-"))
             return
 
         content = self.full_content
@@ -190,8 +238,9 @@ class AnalysisWindow:
             self.punctuation_tree.insert("", tk.END, values=(symbol, count, f"{percentage:.2f}%"))
 
         if not valid_items:
-            self.punctuation_tree.insert("", tk.END, values=(self.language_manager.get_text("no_punctuation"), "0", "0.00%"))
+            self.punctuation_tree.insert("", tk.END, values=("无标点符号", "0", "0.00%"))
 
+    # ---------- 词云标签页 ----------
     def setup_wordcloud_tab(self, parent):
         params_frame = ttk.LabelFrame(parent, text=self.language_manager.get_text("wordcloud_params"))
         params_frame.pack(fill=tk.X, padx=10, pady=10)
@@ -220,27 +269,41 @@ class AnalysisWindow:
         self.wordcloud_canvas.delete("all")
         if message is None:
             if not WORDCLOUD_AVAILABLE:
-                message = self.language_manager.get_text("wordcloud_lib_missing")
-            elif not self.full_content.strip():
-                message = self.language_manager.get_text("no_content_wordcloud")
+                message = "词云库未安装，无法生成\n请安装：jieba, wordcloud, pillow"
             else:
-                message = self.language_manager.get_text("wordcloud_display_area")
+                message = f"{self.language_manager.get_text('wordcloud_analysis')}显示区域\n点击生成按钮"
         self.wordcloud_canvas.create_text(
             self.wordcloud_canvas.winfo_width() // 2 or 200,
             self.wordcloud_canvas.winfo_height() // 2 or 150,
             text=message, font=("Microsoft YaHei", 12), fill="gray"
         )
 
+    def _load_pos_dict(self, lang):
+        """加载词性词典（缓存）"""
+        if lang in self.pos_dict_cache:
+            return self.pos_dict_cache[lang]
+        pos_dict = load_pos_dict(lang)
+        self.pos_dict_cache[lang] = pos_dict
+        return pos_dict
+
     def generate_wordcloud(self):
         self.window.geometry(self.expanded_geometry)
         self.window.update()
 
         if not WORDCLOUD_AVAILABLE:
-            self._show_wordcloud_placeholder(self.language_manager.get_text("wordcloud_missing_lib"))
+            self._show_wordcloud_placeholder("缺少词云库，无法生成")
             return
 
-        if not self.full_content.strip():
-            self._show_wordcloud_placeholder(self.language_manager.get_text("no_content_wordcloud"))
+        # 从模型获取最新条目，并过滤出 KP 和 PL 的发言
+        model = self.controller.model
+        entries = model.entries if hasattr(model, 'entries') else []
+        filtered_content = "\n".join([
+            entry.content for entry in entries
+            if entry.entry_type in ('KP', 'PL') and entry.content.strip()
+        ])
+
+        if not filtered_content.strip():
+            self._show_wordcloud_placeholder("无有效内容可生成词云（已过滤OB/BOT）")
             return
 
         try:
@@ -256,28 +319,44 @@ class AnalysisWindow:
             canvas_height = 500
 
         lang = self.detected_language
+
+        # 加载词性词典（仅中文）
+        pos_dict = {}
         if lang.startswith('zh'):
-            filtered_text = ''.join(re.findall(r'[\u4e00-\u9fff]', self.full_content))
+            pos_dict = self._load_pos_dict(lang)
+
+        # 分词和过滤
+        if lang.startswith('zh'):  # 中文
+            filtered_text = ''.join(re.findall(r'[\u4e00-\u9fff]', filtered_content))
             words = jieba.cut(filtered_text)
-            word_list = [w for w in words if w not in self.stopwords]
-        elif lang == 'en':
-            filtered_text = ''.join(re.findall(r'[a-zA-Z\s]', self.full_content))
+            word_list = []
+            for w in words:
+                if len(w) <= 1 or w in self.stopwords:
+                    continue
+                if w in pos_dict:
+                    # 在词典中，检查词性是否为名词
+                    if pos_dict[w] == ('n' or 'v' or 't'):
+                        word_list.append(w)
+        elif lang == 'en':  # 英文
+            filtered_text = ''.join(re.findall(r'[a-zA-Z\s]', filtered_content))
             words = filtered_text.lower().split()
-            word_list = [w for w in words if w not in self.stopwords]
-        elif lang == 'ja':
-            filtered_text = ''.join(re.findall(r'[\u3040-\u30FF\u4e00-\u9fff\s]', self.full_content))
+            word_list = [w for w in words if len(w) > 1 and w not in self.stopwords]
+        elif lang == 'ja':  # 日文
+            filtered_text = ''.join(re.findall(r'[\u3040-\u30FF\u4e00-\u9fff\s]', filtered_content))
             words = jieba.cut(filtered_text)
-            word_list = [w for w in words if w not in self.stopwords]
+            word_list = [w for w in words if len(w) > 1 and w not in self.stopwords]
         else:
-            filtered_text = ''.join(re.findall(r'[\u4e00-\u9fff]', self.full_content))
+            # 默认中文处理
+            filtered_text = ''.join(re.findall(r'[\u4e00-\u9fff]', filtered_content))
             words = jieba.cut(filtered_text)
-            word_list = [w for w in words if w not in self.stopwords]
+            word_list = [w for w in words if len(w) > 1 and w not in self.stopwords]
 
         word_freq = Counter(word_list)
         if not word_freq:
-            self._show_wordcloud_placeholder(self.language_manager.get_text("wordcloud_empty_result"))
+            self._show_wordcloud_placeholder("分词结果为空或全部被过滤")
             return
 
+        # 生成词云
         wc = WordCloud(
             font_path="simhei.ttf",
             width=canvas_width,
@@ -294,12 +373,18 @@ class AnalysisWindow:
         self.wordcloud_canvas.create_image(0, 0, image=photo, anchor=tk.NW)
         self.wordcloud_canvas.image = photo
 
+    # ---------- 更多分析标签页 ----------
     def setup_todo_tab(self, parent):
-        label = ttk.Label(parent, text=self.language_manager.get_text("more_analysis_placeholder"),
+        label = ttk.Label(parent, text=f"{self.language_manager.get_text('more_analysis')}功能待拓展",
                           font=("Microsoft YaHei", 12))
         label.pack(expand=True)
 
         todo_text = tk.Text(parent, wrap=tk.WORD, font=("Microsoft YaHei", 10))
-        todo_text.insert(tk.END, self.language_manager.get_text("more_analysis_content"))
+        todo_text.insert(tk.END, f"{self.language_manager.get_text('expansion_features')}:\n\n")
+        todo_text.insert(tk.END, "• 文本复杂度分析\n")
+        todo_text.insert(tk.END, "• 关键词提取\n")
+        todo_text.insert(tk.END, "• 情感分析\n")
+        todo_text.insert(tk.END, "• 可读性分析\n")
+        todo_text.insert(tk.END, "• 语言风格分析\n")
         todo_text.config(state=tk.DISABLED)
         todo_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
